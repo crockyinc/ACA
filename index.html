@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>State Checker — State Lookup</title>
+  <link rel="stylesheet" href="styles.css?v=6" />
+</head>
+<body>
+  <a class="skip-link" href="#state-input">Skip to state search</a>
+
+  <div class="layout">
+    <div class="main-col">
+      <header class="topbar">
+        <div class="brand">
+          <img src="assets/logo.png" alt="Loop PK" class="brand-logo" />
+          <span class="brand-name"><b class="c1">S</b><b class="c2">t</b><b class="c3">a</b><b class="c4">t</b><b class="c5">e</b> <b class="c1">C</b><b class="c2">h</b><b class="c3">e</b><b class="c4">c</b><b class="c5">k</b><b class="c1">e</b><b class="c2">r</b></span>
+          <span class="brand-tag">STATE LOOKUP</span>
+        </div>
+      </header>
+
+      <section class="panel search-panel" aria-label="State search">
+        <h2 class="panel-title">STATE SEARCH</h2>
+        <p class="search-sub">Enter a state abbreviation</p>
+        <div class="search-row">
+          <div class="input-wrap">
+            <span class="pin">📍</span>
+            <input
+              id="state-input"
+              class="search-input"
+              type="text"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="e.g. TX"
+              aria-describedby="search-hint"
+            />
+          </div>
+          <button id="search-btn" class="btn btn-primary" type="button">🔍 Search</button>
+          <button id="clear-btn" class="btn btn-ghost" type="button">Clear</button>
+        </div>
+        <p id="search-hint" class="hint">
+          <kbd>Enter</kbd> search &nbsp;·&nbsp; <kbd>Esc</kbd> clear &nbsp;·&nbsp;
+          results appear as you type
+        </p>
+        <p id="status" class="status" role="status">
+          Initializing State Database… You can start typing — the search runs as soon as it is ready.
+        </p>
+      </section>
+
+      <section id="verified-banner" class="verified hidden">
+        <div class="verified-icon">✔</div>
+        <div>
+          <div class="verified-title">STATE VERIFIED</div>
+          <div class="verified-sub" id="verified-sub"></div>
+        </div>
+        <div class="verified-code" id="verified-code"></div>
+      </section>
+
+      <section class="results" aria-label="Results">
+        <div id="results-body" class="cards">
+          <p class="empty-msg">Type a state to see results</p>
+        </div>
+      </section>
+    </div>
+
+    <aside class="side-col">
+      <div class="status-pill" id="status-pill">
+        <span class="dot"></span> State Database Ready
+        <span class="status-meta" id="status-meta"></span>
+        <button class="refresh" id="refresh-btn" title="Reload">⟳</button>
+      </div>
+
+      <div class="panel">
+        <h2 class="panel-title">LIVE TIMEZONES</h2>
+        <div class="tz-main">
+          <div class="tz-main-top">
+            <span>Pakistan (PKT)</span><span class="tz-badge amber">PKT</span>
+          </div>
+          <div class="tz-time" id="tz-pkt">--:--:--</div>
+          <div class="tz-date" id="tz-pkt-date"></div>
+        </div>
+        <h3 class="tz-subhead">UNITED STATES</h3>
+        <div id="tz-us"></div>
+      </div>
+    </aside>
+  </div>
+
+  <script src="data.js?v=4"></script>
+  <script src="app.js?v=6"></script>
+</body>
+</html>
