@@ -163,3 +163,25 @@ Missing, verified in DOM:
 ## 5. Bottom line
 
 Well-scoped little app — right stack, right size, correctly built text nodes (no XSS), sensible offline fallback, and a genuinely useful agent workflow. It is held back by three things: **one live password sitting in public source**, **a data layer that reports success when it has silently failed**, and **a dataset with a handful of concrete defects plus no validation to stop the next one**. All three are small, contained fixes on this branch — P0s are hours, not days. The design decision to fetch the sheet from the browser (so ops can change rates without a deploy) is sound *if* it goes through a Worker proxy with a real error state; as written it is the reason the credential is public *and* the reason the UI can quietly lie.
+
+---
+
+## 6. Fix log — live timezones (follow-up)
+
+Reported symptom: Pakistan clock read `02:17 AM` while Pacific read `12:17 PM` (same instant).
+
+**Diagnosis:** the conversion was not the culprit. At that instant the true UTC was `20:17`, so true PKT was `01:17 AM`; the screenshot was exactly **+1 hour** and the Pacific row was correct, which reproduces only when the *device clock* is one hour fast — verified by shifting the sandbox clock by +3600 s and getting `02:17:03 AM / 01:17:03 PM` character-for-character. The app derived every zone from `Date.now()`, so a wrong device clock silently made every zone wrong, with nothing on screen to reveal it.
+
+Two latent bugs were found in the same code path and fixed at the same time:
+
+1. `new Date(now.toLocaleString("en-US", {...}))` — re-parsing locale output drops the zone, inherits the device zone during parsing, and yields **`Invalid Date` → `NaN:NaN:NaN`** in locales with non-Latin digits (`ar-SA`, `fa-IR`; reproduced).
+2. Badges were hard-coded `PST/MST/CST/EST`, so they stayed wrong for the ~8 DST months (`PDT/MDT/CDT/EDT`).
+
+**Changes** (`app.js`, `index.html`, `styles.css`):
+
+- One instant → explicit IANA zone via `Intl.DateTimeFormat.formatToParts()`; no locale round-trip. Verified identical output under `en-US`, `ar-SA`, `fa-IR` and several device timezones.
+- Badges now derive from the zone itself: `PST`/`PDT`… for the US, `GMT+5` for Pakistan (`#tz-pkt-offset`), so the offset is always visible.
+- Clock-drift guard: compares device time with the same-origin HTTP `Date` header (readable, no CORS) and shows an orange warning above the clocks when the device is >90 s off — this is what would have explained the original report. Silent when offline/opaque.
+- Cache busters bumped (`styles.css?v=7`, `app.js?v=8`).
+
+**Verified:** DST boundaries (Jan/Jul/Nov instants), device skew of 0 / ±1 h / +2.5 h, offline header, and a search regression (TX → 5 cards, banner, no JS errors).

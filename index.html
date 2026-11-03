@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>State Checker — State Lookup</title>
-  <link rel="stylesheet" href="styles.css?v=6" />
+  <link rel="stylesheet" href="styles.css?v=7" />
 </head>
 <body>
   <a class="skip-link" href="#state-input">Skip to state search</a>
@@ -72,13 +72,15 @@
 
       <div class="panel">
         <h2 class="panel-title">LIVE TIMEZONES</h2>
+        <p class="tz-note">Calculated from this device's clock — check the UTC offset below if a time looks wrong.</p>
         <div class="tz-main">
           <div class="tz-main-top">
-            <span>Pakistan (PKT)</span><span class="tz-badge amber">PKT</span>
+            <span>Pakistan (PKT)</span><span class="tz-badge amber" id="tz-pkt-offset">PKT</span>
           </div>
           <div class="tz-time" id="tz-pkt">--:--:--</div>
           <div class="tz-date" id="tz-pkt-date"></div>
         </div>
+        <p id="clock-skew" class="clock-skew hidden" role="alert"></p>
         <h3 class="tz-subhead">UNITED STATES</h3>
         <div id="tz-us"></div>
       </div>
@@ -86,6 +88,6 @@
   </div>
 
   <script src="data.js?v=4"></script>
-  <script src="app.js?v=7"></script>
+  <script src="app.js?v=8"></script>
 </body>
 </html>

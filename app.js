@@ -187,49 +187,121 @@
     });
   }
 
-  /* ---- Live clocks ---- */
+  /* ---- Live clocks ----
+   * Every clock is derived from ONE instant (Date.now()) and an explicit IANA
+   * zone via Intl.DateTimeFormat.formatToParts().
+   * Do NOT re-parse toLocaleString() output: it drops the zone, inherits the
+   * device timezone during parsing, and yields NaN in locales with non-Latin
+   * digits (ar-SA, fa-IR, ...).
+   */
+  var PKT_ZONE = { tz: "Asia/Karachi", badge: "PKT" };
   var US_ZONES = [
-    ["Pacific (PST/PDT)", "PST", "America/Los_Angeles"],
-    ["Mountain (MST/MDT)", "MST", "America/Denver"],
-    ["Central (CST/CDT)", "CST", "America/Chicago"],
-    ["Eastern (EST/EDT)", "EST", "America/New_York"]
+    ["Pacific", "America/Los_Angeles"],
+    ["Mountain", "America/Denver"],
+    ["Central", "America/Chicago"],
+    ["Eastern", "America/New_York"]
   ];
+
+  function zoneParts(date, tz) {
+    var out = {};
+    try {
+      new Intl.DateTimeFormat("en-US-u-nu-latn", {
+        timeZone: tz,
+        hour12: true,
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        timeZoneName: "short"
+      }).formatToParts(date).forEach(function (p) { out[p.type] = p.value; });
+    } catch (e) { /* very old browsers: leave blank, UI shows placeholders */ }
+    return out;
+  }
+
+  function clockText(date, tz) {
+    var p = zoneParts(date, tz);
+    if (!p.hour) return "--:--:--";
+    return p.hour + ":" + p.minute + ":" + p.second + " " + (p.dayPeriod || "");
+  }
+  function dateText(date, tz) {
+    var p = zoneParts(date, tz);
+    if (!p.weekday) return "";
+    return p.weekday + ", " + p.month + " " + p.day + ", " + p.year;
+  }
+  /* Zone label: "PST"/"PDT" in the US (DST-aware), "GMT+5" for Pakistan. */
+  function zoneAbbrev(date, tz) {
+    return zoneParts(date, tz).timeZoneName || "";
+  }
+
   var usWrap = document.getElementById("tz-us");
   var usRows = US_ZONES.map(function (z) {
     var row = el("div", "tz-row");
     var top = el("div", "tz-row-top");
     top.appendChild(el("span", null, z[0]));
-    top.appendChild(el("span", "tz-row-badge", z[1]));
+    var badge = el("span", "tz-row-badge", "—");
+    top.appendChild(badge);
     row.appendChild(top);
-    row.appendChild(el("div", "tz-row-time", "--:--:--"));
-    row.appendChild(el("div", "tz-row-date", ""));
+    var time = el("div", "tz-row-time", "--:--:--");
+    var date = el("div", "tz-row-date", "");
+    row.appendChild(time);
+    row.appendChild(date);
     usWrap.appendChild(row);
-    return { zone: z[2], time: row.children[1], date: row.children[2] };
+    return { tz: z[1], time: time, date: date, badge: badge };
   });
 
-  function fmt(d) {
-    var h = d.getHours(), m = d.getMinutes(), s = d.getSeconds();
-    var ampm = h >= 12 ? "PM" : "AM";
-    h = h % 12 || 12;
-    function p(n) { return (n < 10 ? "0" : "") + n; }
-    return p(h) + ":" + p(m) + ":" + p(s) + " " + ampm;
-  }
-  function fmtDate(d) {
-    return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
-  }
+  var pktTimeEl = document.getElementById("tz-pkt");
+  var pktDateEl = document.getElementById("tz-pkt-date");
+  var pktOffsetEl = document.getElementById("tz-pkt-offset");
+  var skewEl = document.getElementById("clock-skew");
+
   function tick() {
     var now = new Date();
-    var pkt = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Karachi" }));
-    document.getElementById("tz-pkt").textContent = fmt(pkt);
-    document.getElementById("tz-pkt-date").textContent = fmtDate(pkt);
+    pktTimeEl.textContent = clockText(now, PKT_ZONE.tz);
+    pktDateEl.textContent = dateText(now, PKT_ZONE.tz);
+    if (pktOffsetEl) pktOffsetEl.textContent = zoneAbbrev(now, PKT_ZONE.tz);
     usRows.forEach(function (r) {
-      var d = new Date(now.toLocaleString("en-US", { timeZone: r.zone }));
-      r.time.textContent = fmt(d);
-      r.date.textContent = fmtDate(d);
+      r.time.textContent = clockText(now, r.tz);
+      r.date.textContent = dateText(now, r.tz);
+      r.badge.textContent = zoneAbbrev(now, r.tz);
     });
   }
   tick();
   setInterval(tick, 1000);
+
+  /* ---- Clock-drift guard ----
+   * All times above come from THIS device's clock, so a machine that is an hour
+   * fast shows an hour-fast Pakistan time. Compare against the server's `Date`
+   * header (same-origin, so readable) and warn when the device has drifted.
+   */
+  function skewWarning(seconds) {
+    if (!skewEl) return;
+    var mins = Math.round(Math.abs(seconds) / 60);
+    var dir = seconds > 0 ? "ahead of" : "behind";
+    var big = Math.abs(seconds) >= 3600
+      ? (Math.abs(seconds) / 3600).toFixed(1) + " hours"
+      : mins + " min";
+    skewEl.textContent = "⚠ This device's clock is about " + big + " " + dir +
+      " the server. Every timezone below is derived from the device clock, so all times may be off by that much. Fix the system clock / time zone.";
+    skewEl.classList.remove("hidden");
+  }
+
+  function checkClockSkew() {
+    if (!window.fetch || !skewEl) return;
+    fetch(location.pathname || "/", { method: "HEAD", cache: "no-store" })
+      .then(function (res) {
+        var header = res.headers.get("Date");
+        if (!header) return;
+        var server = Date.parse(header);
+        if (isNaN(server)) return;
+        var skew = Math.round((Date.now() - server) / 1000);
+        if (Math.abs(skew) > 90) skewWarning(skew);
+      })
+      .catch(function () { /* header unreadable or offline: stay quiet */ });
+  }
+  checkClockSkew();
 
   /* ---- Events ---- */
   input.addEventListener("input", render);
