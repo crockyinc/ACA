@@ -66,7 +66,7 @@
   }
 
   function matches(row, q) {
-    if (!q) return false; // only show output while a state is being searched
+    if (q.length < 2) return false; // results only appear once 2+ characters are typed
     return row[3].toUpperCase().indexOf(q) === 0; // lookup value: States
   }
 
@@ -117,7 +117,7 @@
 
     if (!q) {
       banner.classList.add("hidden");
-      tbody.appendChild(el("p", "empty-msg", "Type a state to see results"));
+      tbody.appendChild(el("p", "empty-msg", "Type a 2-letter state code (e.g. AZ) to see results"));
       return;
     }
     if (!results.length) {
