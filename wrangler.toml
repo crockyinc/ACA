@@ -1,4 +1,4 @@
-name = "aca"
+name = 'aca'
 compatibility_date = "2026-11-03"
 
 # Static site — serve the repo root as assets (non-interactive deploy)
